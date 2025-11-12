@@ -230,7 +230,7 @@ pip install rdkit
 
 ## 🔧 Configuration
 
-### GPU Support (M1 Mac)
+### GPU Support 
 The application automatically detects and uses:
 - **M1/M2 Mac**: Metal Performance Shaders (MPS)
 - **CUDA**: NVIDIA GPUs
