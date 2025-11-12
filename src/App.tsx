@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Loader } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import LoginPage from './LoginPage';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
@@ -21,7 +20,6 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showLoginPage, setShowLoginPage] = useState(false);
 
   // Check authentication status on component mount
   useEffect(() => {
@@ -61,7 +59,6 @@ function App() {
 
   const handleLogin = (userData: User) => {
     setUser(userData);
-    setShowLoginPage(false);
   };
 
   const handleLogout = async () => {
@@ -85,28 +82,25 @@ function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 flex items-center justify-center animate-fadeIn">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading...</p>
+          <div className="app-loader mx-auto mb-4" />
+          <p className="text-blue-200 text-lg">Loading...</p>
         </div>
       </div>
     );
   }
-
-  // Show login page if user clicks login button
-  if (showLoginPage && !user) {
-    return (
-      <div className="animate-fadeIn">
-        <LoginPage onLogin={handleLogin} />
-      </div>
-    );
-  }
   
+  // Layout for all non-login routes
+  const MainLayout = () => (
+    <div className={`min-h-screen transition-all duration-500 ease-in-out bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900`}>
+      <Navbar user={user} />
+      <Outlet />
+    </div>
+  );
+
   return (
     <Router>
-      <div className={`min-h-screen transition-all duration-500 ease-in-out bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900`}>
-        <Navbar user={user} onLoginClick={() => setShowLoginPage(true)} />
-        
-        <Routes>
+      <Routes>
+        <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/models" element={<ModelsPage />} />
@@ -125,10 +119,12 @@ function App() {
               />
             }
           />
-        </Routes>
-      </div>
+        </Route>
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+      </Routes>
     </Router>
   );
 }
 
 export default App;
+

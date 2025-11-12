@@ -1,77 +1,88 @@
+import { useState, useEffect } from 'react';
+import { Download } from 'lucide-react';
+
+// Direct URL to the PDF in the public folder
+const PDF_URL = '/documentation.pdf';
+
 export default function DocumentationPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold text-white mb-8">Documentation</h1>
-
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-8 shadow-sm space-y-8">
-          <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">Getting Started</h2>
-            <p className="text-blue-200 leading-relaxed mb-4">
-              Welcome to the Insulin Drug Synthesis platform. This guide will help you get started 
-              with analyzing protein sequences, generating variants, and converting to molecular structures.
-            </p>
-            <div className="bg-white/5 rounded-lg p-4 mb-4 border border-white/10">
-              <h3 className="font-semibold text-white mb-2">Quick Start</h3>
-              <ol className="list-decimal list-inside space-y-2 text-blue-200">
-                <li>Sign up for a free account</li>
-                <li>Navigate to the Dashboard</li>
-                <li>Enter your protein sequence</li>
-                <li>Select the analysis type (Classification, Generation, or SMILES)</li>
-                <li>View your results</li>
-              </ol>
+    <div className="page-container min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 overflow-hidden shadow-sm">
+          {/* Header */}
+          <div className="p-4 border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-white">Documentation</h1>
+              <a
+                href={PDF_URL}
+                download
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                title="Download PDF"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download className="w-5 h-5 text-white" />
+              </a>
             </div>
-          </section>
+          </div>
 
-          <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">API Endpoints</h2>
-            <div className="space-y-4">
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <code className="text-sm text-blue-300">POST /predict</code>
-                <p className="text-blue-200 text-sm mt-2">Classify a protein sequence</p>
+          {/* PDF Container */}
+          <div className="relative w-full h-[80vh] bg-black/5">
+            {error ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                <div className="text-red-400 mb-4">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-12 w-12" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error loading document</h3>
+                <p className="text-blue-200 mb-4">{error}</p>
+                <div className="text-sm text-blue-200/80 p-4 bg-white/5 rounded-lg border border-white/10">
+                  <p>Make sure the PDF file exists at: <code className="bg-white/10 px-2 py-1 rounded">/public/documentation.pdf</code></p>
+                </div>
               </div>
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <code className="text-sm text-purple-300">POST /generate-sequences</code>
-                <p className="text-blue-200 text-sm mt-2">Generate protein sequence variants</p>
+            ) : (
+              <iframe
+                src={`${PDF_URL}#view=fitH`}
+                className="w-full h-full border-0"
+                onLoad={() => setLoading(false)}
+                onError={(e) => {
+                  console.error('Failed to load PDF:', e);
+                  setError('Failed to load PDF. Please check the console for more details.');
+                  setLoading(false);
+                }}
+                title="Documentation PDF"
+              >
+                <p className="text-white">Your browser does not support iframes. Please download the PDF to view it: 
+                  <a className="underline" href={PDF_URL} download>Download PDF</a>
+                </p>
+              </iframe>
+            )}
+            
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
               </div>
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <code className="text-sm text-green-300">POST /generate-smiles</code>
-                <p className="text-blue-200 text-sm mt-2">Convert sequence to SMILES format</p>
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">Sequence Format</h2>
-            <p className="text-blue-200 leading-relaxed mb-4">
-              Protein sequences should be in single-letter amino acid code format. Valid amino acids 
-              include: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y.
-            </p>
-            <div className="bg-gray-900 rounded-lg p-4">
-              <code className="text-green-400 text-sm">MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWQTSTSTSLPRADLQLFVDGVRQLEWLSQRLQQPQQKSAFAVQEDFNRSWFRPGHRRNKVFDLPIGVLKSSAQNLMNQEDVHSKQAPGTILKSQGMQVFVLEELDKTLFTLGFHKPAIVQHASSAKDLGPLLDGIWKTTTTKQAAKCLQKNLPSFLGVTSSEFRYLMNSQTRLPDNYLPLLPAIIDRFDNTLPLTGQAQIIFRRFLPLQGKEFQ</code>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">FAQ</h2>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-white mb-2">What is the minimum sequence length?</h3>
-                <p className="text-blue-200">Sequences should be at least 10 amino acids long.</p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-2">Are my sequences stored?</h3>
-                <p className="text-blue-200">No, sequences are processed in real-time and not permanently stored.</p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-2">What models are used?</h3>
-                <p className="text-blue-200">We use custom-trained MLP classifiers, ProteinLM models, and sequence generators.</p>
-              </div>
-            </div>
-          </section>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 

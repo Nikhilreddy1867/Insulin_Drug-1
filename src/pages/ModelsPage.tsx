@@ -7,7 +7,7 @@ export default function ModelsPage() {
       description: 'Multi-layer perceptron for classifying protein sequences into pathogenicity categories',
       icon: Brain,
       color: 'blue',
-      features: ['Pathogenicity prediction', '5-class classification', 'PCA dimensionality reduction'],
+      features: ['Pathogenicity prediction', '4-class classification', 'PCA dimensionality reduction'],
     },
     {
       name: 'Sequence Generator',
@@ -33,9 +33,9 @@ export default function ModelsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16">
+    <div className="page-container min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold text-white mb-4">Available Models</h1>
+        <h1 className="text-4xl font-bold text-white mb-4">Provided Services</h1>
         <p className="text-blue-200 mb-12 text-lg">
           Explore our collection of trained machine learning models for protein analysis
         </p>

@@ -192,7 +192,7 @@ export default function DockingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16">
+    <div className="page-container min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-bold text-white mb-4">Molecular Docking</h1>
         <p className="text-blue-200 mb-12 text-lg">
@@ -203,14 +203,14 @@ export default function DockingPage() {
           {/* SMILES Input */}
           <div>
             <label htmlFor="smiles-input" className="block text-xl font-semibold mb-4 text-white">
-              SMILES String (Drug Molecule)
+              Drug Molecule
             </label>
             <input
               id="smiles-input"
               type="text"
               value={smiles}
               onChange={(e) => setSmiles(e.target.value)}
-              placeholder="Enter SMILES string (e.g., C[C@H](N)C(=O)O)"
+              placeholder="Enter Drug Molecule (e.g., C[C@H](N)C(=O)O)"
               className="w-full px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent text-base font-mono transition-all duration-300 bg-white/10 border-white/30 text-white placeholder-white/50 focus:ring-green-400"
               disabled={loading}
             />

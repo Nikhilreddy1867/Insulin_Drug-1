@@ -1,15 +1,53 @@
 import { Link, useLocation } from 'react-router-dom';
+import styled from 'styled-components';
 
 interface NavbarProps {
   user: { id: string; username: string } | null;
-  onLoginClick: () => void;
 }
 
-export default function Navbar({ user, onLoginClick }: NavbarProps) {
+export default function Navbar({ user }: NavbarProps) {
   const location = useLocation();
 
+  const StyledWrapper = styled.div`
+    .boton-elegante {
+      padding: 8px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
+      outline: none;
+      position: relative;
+      overflow: hidden;
+      font-weight: 600;
+    }
+
+    .boton-elegante::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
+      transform: scale(0);
+      transition: transform 0.4s ease;
+    }
+
+    .boton-elegante:hover::after {
+      transform: scale(4);
+    }
+
+    .boton-elegante:hover {
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.16);
+    }
+  `;
+
   return (
-    <nav className="bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 sticky top-0 z-50">
+    <nav className="sticky top-0 z-50 bg-white/10 backdrop-blur supports-[backdrop-filter]:bg-white/10 border-b border-white/10">
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -38,7 +76,7 @@ export default function Navbar({ user, onLoginClick }: NavbarProps) {
                   : 'text-white/90 hover:text-blue-300'
               }`}
             >
-              Models
+              Services
             </Link>
             <Link
               to="/about"
@@ -82,20 +120,11 @@ export default function Navbar({ user, onLoginClick }: NavbarProps) {
                 Dashboard
               </Link>
             ) : (
-              <>
-                <button
-                  onClick={onLoginClick}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white rounded-lg text-sm font-medium transition-colors hidden sm:block"
-                >
-                  Login
-                </button>
-                <button
-                  onClick={onLoginClick}
-                  className="px-4 py-2 bg-lime-400 hover:bg-lime-500 text-black rounded-lg text-sm font-semibold transition-colors"
-                >
-                  Sign up
-                </button>
-              </>
+              <StyledWrapper>
+                <Link to="/login" className="inline-block">
+                  <button className="boton-elegante">Sign in</button>
+                </Link>
+              </StyledWrapper>
             )}
           </div>
         </div>
@@ -103,4 +132,5 @@ export default function Navbar({ user, onLoginClick }: NavbarProps) {
     </nav>
   );
 }
+
 

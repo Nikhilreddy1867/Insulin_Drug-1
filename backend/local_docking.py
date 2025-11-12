@@ -53,7 +53,7 @@ def run_local_docking(smiles: str, protein_pdb: str) -> dict:
     # Install with: brew install vina (Mac) or download from vina.scripps.edu
     
     # Create temporary directory for files
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         try:
             # 1. Generate ligand 3D structure from SMILES
             logger.info(f"[Docking] Generating 3D structure for ligand from SMILES: {smiles[:50]}...")
@@ -90,101 +90,62 @@ def run_local_docking(smiles: str, protein_pdb: str) -> dict:
             if pdb_size < 100:
                 logger.warning("[Docking] Ligand PDB file is very small, might be problematic")
             
-            # Convert ligand PDB to PDBQT
+            # Convert ligand PDB to PDBQT using Python OpenBabel
             logger.info("[Docking] Converting ligand PDB to PDBQT...")
             ligand_pdbqt = os.path.join(tmpdir, 'ligand.pdbqt')
             
-            # Check if obabel is available
-            # Try common paths for obabel (check Apple Silicon path first, then Intel/legacy paths)
-            obabel_paths = ["obabel", "/opt/homebrew/bin/obabel", "/usr/local/bin/obabel", "/usr/bin/obabel"]
-            obabel_cmd = None
-            
-            for path in obabel_paths:
-                try:
-                    result = subprocess.run(
-                        [path, "--version"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5
-                    )
-                    # OpenBabel returns version info in stderr, or returncode 0 with stdout
-                    if result.returncode == 0 or "Open Babel" in result.stderr or "Open Babel" in result.stdout:
+            try:
+                from openbabel import openbabel as ob
+                logger.info("[Docking] Using Python OpenBabel library")
+                
+                # Create OpenBabel conversion
+                obConversion = ob.OBConversion()
+                obConversion.SetInAndOutFormats("pdb", "pdbqt")
+                obConversion.AddOption("h", ob.OBConversion.OUTOPTIONS)  # Add hydrogens
+                
+                mol = ob.OBMol()
+                obConversion.ReadFile(mol, ligand_pdb)
+                obConversion.WriteFile(mol, ligand_pdbqt)
+                
+                if not os.path.exists(ligand_pdbqt):
+                    raise RuntimeError("OpenBabel failed to create PDBQT file")
+                
+                # Verify output file has content
+                with open(ligand_pdbqt, 'r') as f:
+                    pdbqt_content = f.read()
+                    if len(pdbqt_content.strip()) < 10:
+                        raise RuntimeError("Generated PDBQT file is empty or invalid")
+                
+                logger.info("[Docking] ✅ Converted ligand to PDBQT using Python OpenBabel")
+                
+            except ImportError:
+                logger.warning("[Docking] Python OpenBabel not available, trying executable...")
+                # Fallback to executable-based approach
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                local_obabel = os.path.join(script_dir, "obabel.exe")
+                obabel_paths = [local_obabel, "obabel", "/opt/homebrew/bin/obabel", "/usr/local/bin/obabel", "/usr/bin/obabel"]
+                obabel_cmd = None
+                
+                for path in obabel_paths:
+                    if os.path.isfile(path):
                         obabel_cmd = path
                         logger.info(f"[Docking] Found OpenBabel at: {path}")
                         break
-                except (FileNotFoundError, subprocess.TimeoutExpired):
-                    continue
-                except Exception as e:
-                    logger.debug(f"[Docking] Error checking {path}: {e}")
-                    continue
-            
-            if obabel_cmd is None:
-                # Try which as last resort
-                try:
-                    which_result = subprocess.run(
-                        ["which", "obabel"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5
-                    )
-                    if which_result.returncode == 0:
-                        obabel_cmd = which_result.stdout.strip()
-                        logger.info(f"[Docking] Found OpenBabel via which: {obabel_cmd}")
-                except:
-                    pass
-            
-            if obabel_cmd is None:
-                error_msg = (
-                    "OpenBabel (obabel) not found. "
-                    "Install with: brew install open-babel (Mac) or apt-get install openbabel (Linux). "
-                    "On Apple Silicon Mac, it should be at /opt/homebrew/bin/obabel. "
-                    "Current PATH: " + os.environ.get("PATH", "not set")
-                )
-                logger.error(f"[Docking] {error_msg}")
-                raise RuntimeError(error_msg)
-            
-            # Convert ligand (use found obabel path)
-            logger.info(f"[Docking] Converting ligand with OpenBabel: {obabel_cmd}")
-            logger.debug(f"[Docking] Input PDB: {ligand_pdb}, Output: {ligand_pdbqt}")
-            
-            # Check if input file exists and has content
-            if not os.path.exists(ligand_pdb):
-                raise FileNotFoundError(f"Ligand PDB file not created: {ligand_pdb}")
-            
-            with open(ligand_pdb, 'r') as f:
-                pdb_content = f.read()
-                if len(pdb_content.strip()) < 50:
-                    logger.warning(f"[Docking] Ligand PDB file seems too small ({len(pdb_content)} chars)")
-            
-            try:
+                
+                if obabel_cmd is None:
+                    raise RuntimeError("OpenBabel not found. Install with: pip install openbabel-wheel")
+                
                 result = subprocess.run(
                     [obabel_cmd, ligand_pdb, "-O", ligand_pdbqt, "-xh"],
                     capture_output=True,
                     text=True,
-                    timeout=60  # Increased timeout to 60 seconds
+                    timeout=60
                 )
-            except subprocess.TimeoutExpired:
-                logger.error(f"[Docking] OpenBabel conversion timed out after 60 seconds")
-                logger.error(f"[Docking] This might indicate a problematic SMILES string or PDB structure")
-                raise RuntimeError("OpenBabel conversion timed out. The SMILES string might be invalid or too complex. Try a simpler SMILES or check the generated PDB file.")
-            
-            if result.returncode != 0:
-                logger.error(f"[Docking] OpenBabel conversion failed (return code: {result.returncode})")
-                logger.error(f"[Docking] OpenBabel stderr: {result.stderr[:500]}")
-                logger.error(f"[Docking] OpenBabel stdout: {result.stdout[:500]}")
-                raise RuntimeError(f"OpenBabel conversion failed: {result.stderr[:200]}")
-            
-            if not os.path.exists(ligand_pdbqt):
-                logger.error(f"[Docking] Output PDBQT file not created: {ligand_pdbqt}")
-                raise FileNotFoundError("Failed to generate ligand PDBQT file")
-            
-            # Verify output file has content
-            with open(ligand_pdbqt, 'r') as f:
-                pdbqt_content = f.read()
-                if len(pdbqt_content.strip()) < 10:
-                    raise RuntimeError("Generated PDBQT file is empty or invalid")
-            
-            logger.info("[Docking] ✅ Converted ligand to PDBQT")
+                
+                if result.returncode != 0:
+                    raise RuntimeError(f"OpenBabel conversion failed: {result.stderr[:200]}")
+                
+                logger.info("[Docking] ✅ Converted ligand to PDBQT using executable")
             
             # 2. Save protein PDB (rank 1 from AlphaFold2)
             logger.info("[Docking] Processing protein PDB (rank 1 from AlphaFold2)...")
@@ -192,76 +153,57 @@ def run_local_docking(smiles: str, protein_pdb: str) -> dict:
             with open(protein_pdb_file, 'w') as f:
                 f.write(protein_pdb)
             
-            # Convert protein to PDBQT (use found obabel path)
+            # Convert protein to PDBQT using Python OpenBabel
             logger.info("[Docking] Converting protein to PDBQT...")
             protein_pdbqt = os.path.join(tmpdir, 'protein.pdbqt')
             
-            # Verify protein PDB file exists and has content
-            if not os.path.exists(protein_pdb_file):
-                raise FileNotFoundError(f"Protein PDB file not created: {protein_pdb_file}")
-            
-            with open(protein_pdb_file, 'r') as f:
-                protein_content = f.read()
-                if len(protein_content.strip()) < 100:
-                    logger.warning(f"[Docking] Protein PDB file seems too small ({len(protein_content)} chars)")
-            
             try:
-                result = subprocess.run(
-                    [obabel_cmd, protein_pdb_file, "-O", protein_pdbqt, "-xr"],
-                    capture_output=True,
-                    text=True,
-                    timeout=60  # Increased timeout to 60 seconds
-                )
-            except subprocess.TimeoutExpired:
-                logger.error(f"[Docking] OpenBabel protein conversion timed out after 60 seconds")
-                raise RuntimeError("OpenBabel protein conversion timed out. The PDB file might be too large or malformed.")
-            
-            if result.returncode != 0:
-                logger.error(f"[Docking] OpenBabel protein conversion failed (return code: {result.returncode})")
-                logger.error(f"[Docking] OpenBabel stderr: {result.stderr[:500]}")
-                logger.error(f"[Docking] OpenBabel stdout: {result.stdout[:500]}")
-                raise RuntimeError(f"OpenBabel protein conversion failed: {result.stderr[:200]}")
-            
-            if not os.path.exists(protein_pdbqt):
-                logger.error(f"[Docking] Output protein PDBQT file not created: {protein_pdbqt}")
-                raise FileNotFoundError("Failed to generate protein PDBQT file")
-            
-            # Verify output file has content
-            with open(protein_pdbqt, 'r') as f:
-                pdbqt_content = f.read()
-                if len(pdbqt_content.strip()) < 10:
-                    raise RuntimeError("Generated protein PDBQT file is empty or invalid")
-            
-            logger.info("[Docking] ✅ Converted protein to PDBQT")
+                from openbabel import openbabel as ob
+                
+                # Create OpenBabel conversion for protein
+                obConversion = ob.OBConversion()
+                obConversion.SetInAndOutFormats("pdb", "pdbqt")
+                obConversion.AddOption("r", ob.OBConversion.OUTOPTIONS)  # Rigid receptor
+                
+                mol = ob.OBMol()
+                obConversion.ReadFile(mol, protein_pdb_file)
+                obConversion.WriteFile(mol, protein_pdbqt)
+                
+                if not os.path.exists(protein_pdbqt):
+                    raise RuntimeError("OpenBabel failed to create protein PDBQT file")
+                
+                # Verify output file has content
+                with open(protein_pdbqt, 'r') as f:
+                    pdbqt_content = f.read()
+                    if len(pdbqt_content.strip()) < 10:
+                        raise RuntimeError("Generated protein PDBQT file is empty or invalid")
+                
+                logger.info("[Docking] ✅ Converted protein to PDBQT using Python OpenBabel")
+                
+            except Exception as e:
+                logger.error(f"[Docking] Protein conversion failed: {e}")
+                raise RuntimeError(f"Protein conversion failed: {str(e)}")
             
             # 3. Run Vina docking using binary (more reliable than Python package)
             logger.info("[Docking] Running AutoDock Vina...")
             
-            # Find vina binary (check PATH first, then common locations)
+            # Find vina binary (check local folder first, then PATH, then common locations)
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            local_vina = os.path.join(script_dir, "vina.exe")
+            local_vina_alt = os.path.join(script_dir, "vina_1.2.7_win.exe")
             vina_cmd = None
-            # First try to find via which (respects PATH)
-            which_result = subprocess.run(
-                ["which", "vina"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            if which_result.returncode == 0:
-                vina_cmd = which_result.stdout.strip()
-                # Verify it works
-                result = subprocess.run(
-                    [vina_cmd, "--version"],
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
-                if result.returncode != 0:
-                    vina_cmd = None
             
-            # If not found via which, check common paths
-            if vina_cmd is None:
-                vina_paths = ["vina", "/opt/homebrew/bin/vina", "/usr/local/bin/vina", "/usr/bin/vina"]
-                for path in vina_paths:
+            # Check common paths including local folder
+            vina_paths = [local_vina, local_vina_alt, "vina", "/opt/homebrew/bin/vina", "/usr/local/bin/vina", "/usr/bin/vina"]
+            for path in vina_paths:
+                try:
+                    # For local paths, check file existence first
+                    if os.path.isfile(path):
+                        vina_cmd = path
+                        logger.info(f"[Docking] Found Vina at: {path}")
+                        break
+                    
+                    # For system paths, try running with version check
                     result = subprocess.run(
                         [path, "--version"],
                         capture_output=True,
@@ -270,7 +212,13 @@ def run_local_docking(smiles: str, protein_pdb: str) -> dict:
                     )
                     if result.returncode == 0:
                         vina_cmd = path
+                        logger.info(f"[Docking] Found Vina at: {path}")
                         break
+                except (FileNotFoundError, subprocess.TimeoutExpired):
+                    continue
+                except Exception as e:
+                    logger.debug(f"[Docking] Error checking {path}: {e}")
+                    continue
             
             if vina_cmd is None:
                 raise RuntimeError("AutoDock Vina binary not found. Install with: brew install vina (Mac) or download from http://vina.scripps.edu/download.html")

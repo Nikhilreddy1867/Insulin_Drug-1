@@ -1,113 +1,68 @@
-# =========================================
-# 🧬 T2D Insulin Prediction Tool - .gitignore
-# Exclude large/binary/model files everywhere (not just backend/models)
-# =========================================
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
+venv_gpu/
 venv/
-env/
-ENV/
 .venv/
-pip-wheel-metadata/
-.pytest_cache/
-instance/
-.pyre/
-.mypy_cache/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-*.pot
-*.mo
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb_checkpoints
-
-# Model/Large Files/Artifacts (global matches)
-*.pt
-*.pth
-*.pkl
-*.zip
-*.bin
-*.tar
-*.h5
-*.ckpt
-*.model
-*.weights
-*.onnx
-# You may want to allow README/doc in models dir:
-!backend/models/README.md
-
-# Node/React
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+backend/models/
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 pnpm-debug.log*
-package-lock.json
-yarn.lock
-
-# Frontend/Build
+.pnpm-store/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.turbo/
 coverage/
 dist/
 build/
+out/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.egg
+*.egg-info/
+.eggs/
+.Python
+downloads/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.manifest
+*.spec
+pip-wheel-metadata/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
 .cache/
-.vite/
-
-# Envs/Config
-.env*
-*.env*
-config.json
-secrets.json
-token.json
-backend/.env
-
-# Logs/Temp
-*.log
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ipynb_checkpoints
 logs/
-tmp/
-temp/
-*.tmp
-*.bak
+*.log
+*.out
+*.pid
+.vscode/
+.idea/
 *.swp
 *.swo
-*.out
-
-# OS/
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# IDE
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# System/Misc
-*.bak
-*.tmp
-*.old
-*.orig
-*.rej
-*.out
-
-# Custom project scripts
-start_servers.log
-setup_custom_model.log
+.env
+.env.*
+backend/.env
+tmp/
+temp/

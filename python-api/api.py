@@ -10,10 +10,12 @@ import torch.nn.functional as F
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
+import pandas as pd
 
 # Model paths (relative to this file's directory)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(os.path.dirname(BASE_DIR), "backend", "models")
+DRUG_SHEET_PATH = os.path.join(os.path.dirname(BASE_DIR), "misc", "Drug Sheet.xlsx")
 
 # Helper to find file with case variations
 def find_model_file(base_name, dir_path=MODEL_DIR):
@@ -63,6 +65,58 @@ try:
     rdkit_ok = True
 except Exception:
     rdkit_ok = False
+
+# ============ Drug Sheet Lookup ============
+
+_drug_lookup = None
+
+def _clean_col(col: str) -> str:
+    return "".join(ch for ch in col.lower() if ch.isalnum())
+
+def _normalize_smiles(smiles: str) -> Optional[str]:
+    if not smiles:
+        return None
+    s = str(smiles).strip()
+    if not s:
+        return None
+    if rdkit_ok:
+        try:
+            mol = Chem.MolFromSmiles(s)
+            if mol is None:
+                return s
+            Chem.SanitizeMol(mol)
+            return Chem.MolToSmiles(mol, canonical=True)
+        except Exception:
+            return s
+    return s
+
+def load_drug_lookup() -> dict:
+    global _drug_lookup
+    if _drug_lookup is not None:
+        return _drug_lookup
+    lookup = {}
+    try:
+        if os.path.isfile(DRUG_SHEET_PATH):
+            df = pd.read_excel(DRUG_SHEET_PATH, engine='openpyxl')
+            cols = { _clean_col(c): c for c in df.columns }
+            # Possible column keys
+            smile_keys = [
+                'smilestructure','smiles','smile','smilestruct','smilestring','smilestructure'
+            ]
+            drug_keys = ['drug','drugname','name']
+            smile_col = next((cols[k] for k in smile_keys if k in cols), None)
+            drug_col = next((cols[k] for k in drug_keys if k in cols), None)
+            if smile_col and drug_col:
+                for _, row in df[[smile_col, drug_col]].dropna().iterrows():
+                    s = _normalize_smiles(row[smile_col])
+                    d = str(row[drug_col]).strip()
+                    if s and d:
+                        lookup[s] = d
+    except Exception:
+        # Fail quietly; no lookup available
+        lookup = {}
+    _drug_lookup = lookup
+    return _drug_lookup
 
 # ============ Tokenizer ============
 
@@ -479,6 +533,15 @@ def predict(request: PredictRequest):
                         "note": "RDKit not available for validation"
                     }
                     break
+        # Lookup drug name from Excel
+        drug_name = None
+        try:
+            lookup = load_drug_lookup()
+            key = _normalize_smiles(smiles) if smiles else None
+            if key:
+                drug_name = lookup.get(key) or lookup.get(smiles.strip())
+        except Exception:
+            drug_name = None
         
         return {
             "sequence": sequence,
@@ -487,7 +550,8 @@ def predict(request: PredictRequest):
             "device": str(DEVICE),
             "deviceType": DEVICE_TYPE,
             "sampling": final_params,
-            "rdkit_available": rdkit_ok
+            "rdkit_available": rdkit_ok,
+            "drug_name": drug_name
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")

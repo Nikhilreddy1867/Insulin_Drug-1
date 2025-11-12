@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import styled from 'styled-components';
 import { Send, AlertCircle, CheckCircle, Loader, Activity, LogOut, User, Moon, Sun, Dna, FlaskConical, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -48,6 +49,7 @@ interface SmilesApiResponse {
   device_type?: string;
   device?: string;
   deviceType?: string;
+  drug_name?: string;
   error?: string;
 }
 
@@ -59,10 +61,97 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
 }) {
   const navigate = useNavigate();
 
+  // Redirect to home if user logs out
+  useEffect(() => {
+    if (!user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
+  // While redirecting, avoid rendering dashboard content
   if (!user) {
-    navigate('/');
     return null;
   }
+
+  // Clipboard helper
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch {}
+    }
+  };
+
+  // Compact copy icon button using provided UI concept
+  const CopyButtonWrapper = styled.div`
+    .icon-conatiner {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.18);
+      position: relative;
+    }
+
+    .icon-conatiner svg { width: 16px; height: 16px; }
+    .icon-conatiner svg:last-child { position: absolute; }
+
+    .icon-conatiner:active { animation: press 0.2s 1 linear; }
+    .icon-conatiner:active svg:last-child { animation: bounce 0.2s 1 linear; }
+
+    @keyframes press {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.92); }
+      to { transform: scale(1); }
+    }
+
+    @keyframes bounce {
+      50% { transform: rotate(5deg) translate(8px, -12px); }
+      to { transform: scale(0.9) rotate(10deg) translate(18px, -20px); opacity: 0; }
+    }
+  `;
+
+  const CopyIconButton = ({ onClick, title = 'Copy' }: { onClick: () => void; title?: string }) => (
+    <CopyButtonWrapper>
+      <div className="icon-conatiner" onClick={onClick} title={title} aria-label={title}>
+        <svg width="19px" height="21px" viewBox="0 0 19 21" xmlns="http://www.w3.org/2000/svg">
+          <g stroke="none" strokeWidth={1} fill="none" fillRule="evenodd">
+            <g transform="translate(-142.000000, -122.000000)">
+              <g transform="translate(142.000000, 122.000000)">
+                <path d="M3.4,4 L11.5,4 L11.5,4 L16,8.25 L16,17.6 C16,19.4777681 14.4777681,21 12.6,21 L3.4,21 C1.52223185,21 6.74049485e-16,19.4777681 0,17.6 L0,7.4 C2.14128934e-16,5.52223185 1.52223185,4 3.4,4 Z" fill="#C4FFE4" />
+                <path d="M6.4,0 L12,0 L12,0 L19,6.5 L19,14.6 C19,16.4777681 17.4777681,18 15.6,18 L6.4,18 C4.52223185,18 3,16.4777681 3,14.6 L3,3.4 C3,1.52223185 4.52223185,7.89029623e-16 6.4,0 Z" fill="#85EBBC" />
+                <path d="M12,0 L12,5.5 C12,6.05228475 12.4477153,6.5 13,6.5 L19,6.5 L19,6.5 L12,0 Z" fill="#64B18D" />
+              </g>
+            </g>
+          </g>
+        </svg>
+        <svg width="19px" height="21px" viewBox="0 0 19 21" xmlns="http://www.w3.org/2000/svg">
+          <g stroke="none" strokeWidth={1} fill="none" fillRule="evenodd">
+            <g transform="translate(-142.000000, -122.000000)">
+              <g transform="translate(142.000000, 122.000000)">
+                <path d="M3.4,4 L11.5,4 L11.5,4 L16,8.25 L16,17.6 C16,19.4777681 14.4777681,21 12.6,21 L3.4,21 C1.52223185,21 6.74049485e-16,19.4777681 0,17.6 L0,7.4 C2.14128934e-16,5.52223185 1.52223185,4 3.4,4 Z" fill="#C4FFE4" />
+                <path d="M6.4,0 L12,0 L12,0 L19,6.5 L19,14.6 C19,16.4777681 17.4777681,18 15.6,18 L6.4,18 C4.52223185,18 3,16.4777681 3,14.6 L3,3.4 C3,1.52223185 4.52223185,7.89029623e-16 6.4,0 Z" fill="#85EBBC" />
+                <path d="M12,0 L12,5.5 C12,6.05228475 12.4477153,6.5 13,6.5 L19,6.5 L19,6.5 L12,0 Z" fill="#64B18D" />
+              </g>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </CopyButtonWrapper>
+  );
   const [sequence, setSequence] = useState('');
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [result, setResult] = useState<PredictionResult | null>(null);
@@ -78,7 +167,8 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
   const [generatedSmiles, setGeneratedSmiles] = useState<string>('');
   const [smilesError, setSmilesError] = useState<string | null>(null);
   const [smilesDevice, setSmilesDevice] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'classification' | 'sequence-generation' | 'smiles-generation' | 'alphafold2' | 'docking' | 'pipeline'>('classification');
+  const [matchedDrugName, setMatchedDrugName] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'classification' | 'sequence-generation' | 'smiles-generation' | 'alphafold2' | 'docking'>('classification');
   
   // AlphaFold2 state
   const [alphafoldSequence, setAlphafoldSequence] = useState('');
@@ -92,16 +182,8 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
   const [dockingLoading, setDockingLoading] = useState(false);
   const [dockingResult, setDockingResult] = useState<any>(null);
   const [dockingError, setDockingError] = useState<string | null>(null);
-  const [useProteinSequence, setUseProteinSequence] = useState(false);
   const [dockingProteinSequence, setDockingProteinSequence] = useState('');
   
-  // Pipeline state
-  const [pipelineSequence, setPipelineSequence] = useState('');
-  const [pipelineSmiles, setPipelineSmiles] = useState('');
-  const [pipelineLoading, setPipelineLoading] = useState(false);
-  const [pipelineResult, setPipelineResult] = useState<any>(null);
-  const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const [pipelineStep, setPipelineStep] = useState<string>('');
 
   const validateSequence = (seq: string): boolean => {
     const validAminoAcids = /^[ACDEFGHIKLMNPQRSTVWY]+$/i;
@@ -109,12 +191,12 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
   };
 
   // 3D Molecule Viewer Component
-  function Molecule3DViewer({ proteinPdb, ligandPdbqt }: { proteinPdb: string; ligandPdbqt: string }) {
+  function Molecule3DViewer({ proteinPdb, ligandPdbqt }: { proteinPdb: string; ligandPdbqt?: string }) {
     const viewerRef = useRef<HTMLDivElement>(null);
     const viewerInstance = useRef<any>(null);
 
     useEffect(() => {
-      if (!viewerRef.current || !proteinPdb || !ligandPdbqt) return;
+      if (!viewerRef.current || !proteinPdb) return;
 
       // Load 3Dmol.js dynamically
       const load3DMol = async () => {
@@ -327,6 +409,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
     setSmilesLoading(true);
     setSmilesError(null);
     setGeneratedSmiles('');
+    setMatchedDrugName('');
 
     try {
       const response = await fetch('http://localhost:5001/generate-smiles', {
@@ -348,6 +431,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
       if (data.success && data.smiles) {
         setGeneratedSmiles(data.smiles);
         setSmilesDevice(data.deviceType || data.device_type || data.device || 'Unknown');
+        setMatchedDrugName(data.drug_name || '');
       } else {
         setSmilesError(data.error || 'SMILES generation failed');
       }
@@ -373,86 +457,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
   const formatPrediction = (prediction: string): string => {
     return prediction.replace(/_/g, ' ');
   };
-
-  // Pipeline handler
-  const handlePipelineRun = async () => {
-    const trimmedSequence = pipelineSequence.trim().toUpperCase();
-    const trimmedSmiles = pipelineSmiles.trim();
-    
-    if (!trimmedSequence) {
-      setPipelineError('Please enter a protein sequence');
-      return;
-    }
-    
-    if (!trimmedSmiles) {
-      setPipelineError('Please enter a SMILES string');
-      return;
-    }
-    
-    if (trimmedSequence.length < 10) {
-      setPipelineError('Sequence too short. Please provide at least 10 amino acids.');
-      return;
-    }
-    
-    if (!validateSequence(trimmedSequence)) {
-      setPipelineError('Invalid amino acid sequence. Please use single-letter amino acid codes.');
-      return;
-    }
-
-    setPipelineLoading(true);
-    setPipelineError(null);
-    setPipelineResult(null);
-    setPipelineStep('Starting pipeline...');
-
-    try {
-      // Create AbortController for timeout handling (pipeline can take 15-20 minutes)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minutes timeout
-
-      const response = await fetch('http://localhost:5001/pipeline/alphafold2-to-docking', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          protein_sequence: trimmedSequence,
-          smiles: trimmedSmiles
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.status === 401) {
-        setPipelineError('Session expired. Please log in again.');
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        setPipelineResult(data);
-        setPipelineStep('Pipeline completed successfully!');
-      } else {
-        setPipelineError(data.error || 'Pipeline failed');
-        if (data.alphafold2) {
-          // Partial success - AlphaFold2 completed but docking failed
-          setPipelineResult(data);
-        }
-      }
-    } catch (err: any) {
-      console.error('Pipeline error:', err);
-      if (err.name === 'AbortError' || err.message?.includes('timeout')) {
-        setPipelineError('Request timeout. Pipeline can take 15-20 minutes. Please try again with a shorter sequence for testing.');
-      } else {
-        setPipelineError('Unable to connect to the server. Please ensure both Colab notebooks (AlphaFold2 and Docking) are running.');
-      }
-    } finally {
-      setPipelineLoading(false);
-      setPipelineStep('');
-    }
-  };
+  
 
   // AlphaFold2 handler
   const handleAlphaFold2Predict = async () => {
@@ -538,14 +543,9 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
       setDockingError('Please enter a SMILES string');
       return;
     }
-    
-    if (!useProteinSequence && !dockingProteinPDB.trim()) {
-      setDockingError('Please provide protein PDB content (from AlphaFold2) or sequence');
-      return;
-    }
-
-    if (useProteinSequence && !dockingProteinSequence.trim()) {
-      setDockingError('Please enter a protein sequence');
+    // Require either PDB content or protein sequence (no toggle)
+    if (!dockingProteinPDB.trim() && !dockingProteinSequence.trim()) {
+      setDockingError('Please provide protein PDB content (from AlphaFold2) or protein sequence');
       return;
     }
 
@@ -554,14 +554,11 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
     setDockingResult(null);
 
     try {
-      const payload: any = {
-        smiles: dockingSmiles.trim(),
-      };
-
-      if (useProteinSequence) {
-        payload.protein_sequence = dockingProteinSequence.trim().toUpperCase();
-      } else {
+      const payload: any = { smiles: dockingSmiles.trim() };
+      if (dockingProteinPDB.trim()) {
         payload.protein_pdb = dockingProteinPDB.trim();
+      } else {
+        payload.protein_sequence = dockingProteinSequence.trim().toUpperCase();
       }
 
       const response = await fetch('http://localhost:5001/docking/run', {
@@ -608,7 +605,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
   };
 
   return (
-    <div className={`min-h-screen relative overflow-hidden transition-all duration-500 ease-in-out ${isDarkMode ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950' : 'bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900'}`}>
+    <div className={`page-container min-h-screen relative overflow-hidden transition-all duration-500 ease-in-out font-clean ${isDarkMode ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950' : 'bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900'}`}>
       {/* Background particles effect */}
       <div className="absolute inset-0 overflow-hidden">
         <div className={`absolute top-20 left-20 w-2 h-2 rounded-full opacity-20 animate-pulse transition-colors duration-500 ${isDarkMode ? 'bg-blue-400' : 'bg-white'}`}></div>
@@ -621,7 +618,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
         <div className="absolute top-4 right-4 flex items-center gap-4">
           <div className={`flex items-center gap-2 backdrop-blur-sm rounded-full px-4 py-2 border transition-all duration-300 ${isDarkMode ? 'bg-slate-800/60 border-blue-600 shadow-lg' : 'bg-white/10 border-white/20'}`}>
             <User className={`w-4 h-4 transition-colors duration-300 ${isDarkMode ? 'text-blue-300' : 'text-blue-300'}`} />
-            <span className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-blue-100' : 'text-white'}`}>{user.username}</span>
+            <span className={`text-sm font-medium transition-colors duration-300 ${isDarkMode ? 'text-blue-100' : 'text-white'}`}>{user?.username}</span>
           </div>
           <button
             onClick={toggleTheme}
@@ -650,7 +647,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
             </h1>
           </div>
           <p className={`text-xl md:text-2xl font-light max-w-3xl mx-auto transition-colors duration-300 ${isDarkMode ? 'text-blue-200' : 'text-blue-200'}`}>
-            Advanced AI-powered protein sequence pathogenicity classifier
+            Advanced AI-powered protein sequence analysis
           </p>
         </div>
 
@@ -659,63 +656,53 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
           <div className="flex flex-wrap justify-center gap-4">
             <button
               onClick={() => setActiveTab('classification')}
-              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
+              className={`px-8 py-4 rounded-xl font-semibold text-base md:text-lg transition-all duration-300 transform hover:scale-105 bubble-btn no-shine ${
                 activeTab === 'classification'
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
                   : `${isDarkMode ? 'bg-slate-800/60 border border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'}`
               }`}
             >
-              Classification
+              Insulin Prediction
             </button>
             <button
               onClick={() => setActiveTab('sequence-generation')}
-              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
+              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 bubble-btn no-shine ${
                 activeTab === 'sequence-generation'
                   ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg'
                   : `${isDarkMode ? 'bg-slate-800/60 border border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'}`
               }`}
             >
-              Sequence Generation
+              Simulate Insulin Sequences
             </button>
             <button
               onClick={() => setActiveTab('smiles-generation')}
-              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
+              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 bubble-btn no-shine ${
                 activeTab === 'smiles-generation'
                   ? 'bg-gradient-to-r from-green-500 to-teal-600 text-white shadow-lg'
                   : `${isDarkMode ? 'bg-slate-800/60 border border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'}`
               }`}
             >
-              SMILES Generation
+              Recommended Drug
             </button>
             <button
               onClick={() => setActiveTab('alphafold2')}
-              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
+              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 bubble-btn no-shine ${
                 activeTab === 'alphafold2'
-                  ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-lg'
                   : `${isDarkMode ? 'bg-slate-800/60 border border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'}`
               }`}
             >
-              AlphaFold2
+              AlphaFold2(.pdb creation)
             </button>
             <button
               onClick={() => setActiveTab('docking')}
-              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
+              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 bubble-btn no-shine ${
                 activeTab === 'docking'
                   ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg'
                   : `${isDarkMode ? 'bg-slate-800/60 border border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'}`
               }`}
             >
               Docking
-            </button>
-            <button
-              onClick={() => setActiveTab('pipeline')}
-              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
-                activeTab === 'pipeline'
-                  ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
-                  : `${isDarkMode ? 'bg-slate-800/60 border border-slate-600 text-slate-200 hover:bg-slate-700/60' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'}`
-              }`}
-            >
-              Complete Pipeline
             </button>
           </div>
         </div>
@@ -724,13 +711,13 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
         <div className="w-full max-w-7xl">
           {/* Classification Tab Content */}
           {activeTab === 'classification' && (
-            <div className={`p-8 rounded-xl mb-12 transition-all duration-300 ${isDarkMode ? 'bg-slate-800/90 border border-indigo-600' : 'bg-white/95 border border-white/10'}`}>
+            <div className={`p-8 rounded-xl mb-12 transition-all duration-300 ${isDarkMode ? 'bg-blue-950/80 border border-blue-600' : 'bg-blue-50/90 border border-blue-200'}`}>
               <label htmlFor="sequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-blue-100' : 'text-gray-800'}`}>Protein Sequence</label>
               <textarea
                 id="sequence"
                 value={sequence}
                 onChange={(e) => setSequence(e.target.value)}
-                placeholder="Enter your protein sequence here..."
+                placeholder="Enter patient protein sequence here..."
                 className={`w-full h-36 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 hover:border-gray-300 ${isDarkMode ? 'bg-slate-700 border-indigo-600 text-blue-100 placeholder-blue-300 focus:ring-blue-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
                 disabled={predictionLoading}
               />
@@ -738,9 +725,22 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                 <button
                   onClick={handlePredict}
                   disabled={predictionLoading || !sequence.trim()}
-                  className="w-full md:w-max bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg"
+                  className={`w-full md:w-max bg-transparent font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 hover:shadow-none transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg cta ${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}
                 >
-                  {predictionLoading ? (<><Loader className="w-6 h-6 animate-spin" />Analyzing...</>) : (<><Send className="w-6 h-6" />Predict</>)}
+                  {predictionLoading ? (
+                    <>
+                      <Loader className="w-6 h-6 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-6 h-6" />
+                      <span className="hover-underline-animation">Predict</span>
+                      <svg id="arrow-horizontal" xmlns="http://www.w3.org/2000/svg" width={30} height={10} viewBox="0 0 46 16">
+                        <path d="M8,0,6.545,1.455l5.506,5.506H-30V9.039H12.052L6.545,14.545,8,16l8-8Z" transform="translate(30)" />
+                      </svg>
+                    </>
+                  )}
                 </button>
                 {error && <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl animate-fadeIn"><AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" /><p className="text-red-700">{error}</p></div>}
               </div>
@@ -813,9 +813,22 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
               <button
                 onClick={handleGenerateSequences}
                 disabled={sequenceGenerationLoading || !generatorSequence.trim()}
-                className="w-full md:w-max bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg"
+                className={`w-full md:w-max bg-transparent font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 hover:shadow-none transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg cta ${isDarkMode ? 'text-purple-200' : 'text-purple-800'}`}
               >
-                {sequenceGenerationLoading ? (<><Loader className="w-6 h-6 animate-spin" />Generating...</>) : (<><Activity className="w-6 h-6" />Generate Sequences</>)}
+                {sequenceGenerationLoading ? (
+                  <>
+                    <Loader className="w-6 h-6 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Activity className="w-6 h-6" />
+                    <span className="hover-underline-animation">Generate Sequences</span>
+                    <svg id="arrow-horizontal" xmlns="http://www.w3.org/2000/svg" width={30} height={10} viewBox="0 0 46 16">
+                      <path d="M8,0,6.545,1.455l5.506,5.506H-30V9.039H12.052L6.545,14.545,8,16l8-8Z" transform="translate(30)" />
+                    </svg>
+                  </>
+                )}
               </button>
               {sequenceGenerationError && <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl animate-fadeIn"><AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" /><p className="text-red-700">{sequenceGenerationError}</p></div>}
             </div>
@@ -865,6 +878,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                               }`}>
                                 {index + 1}
                               </div>
+                              <CopyIconButton onClick={() => copyToClipboard(seq.sequence)} />
                               <h4 className={`text-base font-semibold transition-colors duration-300 ${isDarkMode ? 'text-purple-100' : 'text-purple-800'}`}>
                                 Sequence #{index + 1}
                               </h4>
@@ -918,12 +932,12 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
           {/* SMILES Generation Tab Content */}
           {activeTab === 'smiles-generation' && (
           <div className={`p-8 rounded-xl mb-8 transition-all duration-300 ${isDarkMode ? 'bg-green-950/90 border border-green-600' : 'bg-green-50/90 border border-green-200'}`}>
-            <label htmlFor="smilesSequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-green-100' : 'text-green-800'}`}>Protein Sequence (for SMILES)</label>
+            <label htmlFor="smilesSequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-green-100' : 'text-green-800'}`}>Protein Sequence (for Drug Prediction)</label>
             <textarea
               id="smilesSequence"
               value={smilesSequence}
               onChange={(e) => setSmilesSequence(e.target.value)}
-              placeholder="Enter protein sequence to generate SMILES..."
+              placeholder="Enter protein sequence to generate Drug..."
               className={`w-full h-32 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 hover:border-gray-300 ${isDarkMode ? 'bg-slate-700 border-green-600 text-green-100 placeholder-green-300 focus:ring-green-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
               disabled={smilesLoading}
             />
@@ -931,9 +945,22 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
               <button
                 onClick={handleGenerateSmiles}
                 disabled={smilesLoading || !smilesSequence.trim()}
-                className="w-full md:w-max bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg"
+                className={`w-full md:w-max bg-transparent font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 hover:shadow-none transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg cta ${isDarkMode ? 'text-green-200' : 'text-green-800'}`}
               >
-                {smilesLoading ? (<><Loader className="w-6 h-6 animate-spin" />Generating...</>) : (<><Activity className="w-6 h-6" />Generate SMILES</>)}
+                {smilesLoading ? (
+                  <>
+                    <Loader className="w-6 h-6 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Activity className="w-6 h-6" />
+                    <span className="hover-underline-animation">Generate Drug</span>
+                    <svg id="arrow-horizontal" xmlns="http://www.w3.org/2000/svg" width={30} height={10} viewBox="0 0 46 16">
+                      <path d="M8,0,6.545,1.455l5.506,5.506H-30V9.039H12.052L6.545,14.545,8,16l8-8Z" transform="translate(30)" />
+                    </svg>
+                  </>
+                )}
               </button>
               {smilesError && <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl animate-fadeIn"><AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" /><p className="text-red-700">{smilesError}</p></div>}
             </div>
@@ -942,8 +969,8 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                     <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
                       <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-green-800 font-semibold text-lg">SMILES Generation Complete</p>
-                        <p className="text-green-600 text-sm">Generated SMILES structure from protein sequence</p>
+                        <p className="text-green-800 font-semibold text-lg">Drug Generation Complete</p>
+                        <p className="text-green-600 text-sm">Generated Drug from protein sequence</p>
                       </div>
                       {smilesDevice && (
                         <div className={`px-3 py-1 rounded-lg text-xs font-semibold ${
@@ -959,9 +986,31 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                         ? 'bg-slate-800/50 border-green-600' 
                         : 'bg-white border-green-200'
                     }`}>
-                      <h4 className={`text-lg font-semibold mb-3 transition-colors duration-300 ${isDarkMode ? 'text-green-100' : 'text-green-800'}`}>
-                        Generated SMILES Structure
-                      </h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className={`text-lg font-semibold transition-colors duration-300 ${isDarkMode ? 'text-green-100' : 'text-green-800'}`}>
+                          Drug Name
+                        </h4>
+                      </div>
+                      <div className={`font-sans text-base p-4 rounded-lg transition-colors duration-300 ${
+                        isDarkMode 
+                          ? 'bg-slate-900 text-green-200 border border-slate-600' 
+                          : 'bg-gray-50 text-green-800 border border-green-200'
+                      }`}>
+                        {matchedDrugName || 'New Drug Generated'}
+                      </div>
+                    </div>
+
+                    <div className={`p-6 rounded-xl border-2 transition-all duration-300 ${
+                      isDarkMode 
+                        ? 'bg-slate-800/50 border-green-600' 
+                        : 'bg-white border-green-200'
+                    }`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className={`text-lg font-semibold transition-colors duration-300 ${isDarkMode ? 'text-green-100' : 'text-green-800'}`}>
+                          Drug Structure
+                        </h4>
+                        <CopyIconButton onClick={() => copyToClipboard(generatedSmiles)} />
+                      </div>
                       <div className={`font-mono text-sm p-4 rounded-lg transition-colors duration-300 ${
                         isDarkMode 
                           ? 'bg-slate-900 text-green-300 border border-slate-600' 
@@ -977,8 +1026,8 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
 
           {/* AlphaFold2 Tab Content */}
           {activeTab === 'alphafold2' && (
-            <div className={`p-8 rounded-xl mb-8 transition-all duration-300 ${isDarkMode ? 'bg-indigo-950/90 border border-indigo-600' : 'bg-indigo-50/90 border border-indigo-200'}`}>
-              <label htmlFor="alphafold-sequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-indigo-100' : 'text-indigo-800'}`}>
+            <div className={`p-8 rounded-xl mb-8 transition-all duration-300 ${isDarkMode ? 'bg-yellow-950/90 border border-yellow-600' : 'bg-yellow-50/90 border border-yellow-200'}`}>
+              <label htmlFor="alphafold-sequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-yellow-100' : 'text-yellow-800'}`}>
                 Protein Sequence
               </label>
               <textarea
@@ -986,14 +1035,14 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                 value={alphafoldSequence}
                 onChange={(e) => setAlphafoldSequence(e.target.value)}
                 placeholder="Enter protein sequence to predict 3D structure..."
-                className={`w-full h-40 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-indigo-600 text-indigo-100 placeholder-indigo-300 focus:ring-indigo-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
+                className={`w-full h-40 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-yellow-600 text-yellow-100 placeholder-yellow-300 focus:ring-yellow-400' : 'border-gray-200 text-gray-800 placeholder-gray-600 focus:ring-yellow-500'}`}
                 disabled={alphafoldLoading}
               />
               <div className="mt-4 flex flex-col md:flex-row md:items-center md:gap-6 gap-3">
                 <button
                   onClick={handleAlphaFold2Predict}
                   disabled={alphafoldLoading || !alphafoldSequence.trim()}
-                  className="w-full md:w-max bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg"
+                  className={`w-full md:w-max bg-transparent font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 hover:shadow-none transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg cta ${isDarkMode ? 'text-yellow-200 disabled:text-yellow-300' : 'text-yellow-800 disabled:text-yellow-600'}`}
                 >
                   {alphafoldLoading ? (
                     <>
@@ -1002,8 +1051,11 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                     </>
                   ) : (
                     <>
-                      <Dna className="w-6 h-6" />
-                      Predict Structure
+                      <Dna className={`w-6 h-6 ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`} />
+                      <span className={`hover-underline-animation ${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>Predict Structure</span>
+                      <svg id="arrow-horizontal" className={`${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`} xmlns="http://www.w3.org/2000/svg" width={30} height={10} viewBox="0 0 46 16">
+                        <path d="M8,0,6.545,1.455l5.506,5.506H-30V9.039H12.052L6.545,14.545,8,16l8-8Z" transform="translate(30)" />
+                      </svg>
                     </>
                   )}
                 </button>
@@ -1036,13 +1088,16 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                         Prediction Results
                       </h3>
                       {alphafoldResult.result.pdb_content && (
-                        <button
-                          onClick={downloadAlphaFoldPDB}
-                          className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-                        >
-                          <Download className="w-4 h-4" />
-                          Download PDB
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={downloadAlphaFoldPDB}
+                            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                          >
+                            <Download className="w-4 h-4" />
+                            Download PDB
+                          </button>
+                          <CopyIconButton onClick={() => copyToClipboard(alphafoldResult.result.pdb_content)} />
+                        </div>
                       )}
                     </div>
                     {alphafoldResult.result.plddt_score && (
@@ -1069,6 +1124,16 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                       </div>
                     )}
                     {alphafoldResult.result.pdb_content && (
+                      <div className={`rounded-lg p-4 border ${isDarkMode ? 'bg-white border-indigo-600' : 'bg-white border-indigo-200'}`}>
+                        <h4 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${isDarkMode ? 'text-indigo-800' : 'text-indigo-800'}`}>
+                          3D Structure Viewer
+                        </h4>
+                        <div className="relative" style={{ zIndex: 0 }}>
+                          <Molecule3DViewer proteinPdb={alphafoldResult.result.pdb_content} />
+                        </div>
+                      </div>
+                    )}
+                    {alphafoldResult.result.pdb_content && (
                       <div className={`rounded-lg p-4 border ${isDarkMode ? 'bg-slate-900 border-slate-600' : 'bg-gray-900'}`}>
                         <h4 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${isDarkMode ? 'text-indigo-100' : 'text-indigo-800'}`}>
                           PDB File Content (Preview)
@@ -1091,66 +1156,52 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
               <div className="space-y-6">
                 <div>
                   <label htmlFor="docking-smiles" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
-                    SMILES String (Drug Molecule)
+                    Drug Molecule
                   </label>
                   <input
                     id="docking-smiles"
                     type="text"
                     value={dockingSmiles}
                     onChange={(e) => setDockingSmiles(e.target.value)}
-                    placeholder="Enter SMILES string (e.g., C[C@H](N)C(=O)O) or use generated SMILES from above"
+                    placeholder="Enter Drug Molecule (e.g., C[C@H](N)C(=O)O)"
                     className={`w-full px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base font-mono transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-teal-600 text-teal-100 placeholder-teal-300 focus:ring-teal-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
                     disabled={dockingLoading}
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-3 mb-4">
-                    <input
-                      type="checkbox"
-                      checked={useProteinSequence}
-                      onChange={(e) => setUseProteinSequence(e.target.checked)}
-                      className="w-4 h-4 rounded"
-                    />
-                    <span className={isDarkMode ? 'text-teal-100' : 'text-teal-800'}>Use Protein Sequence (otherwise use PDB file from AlphaFold2)</span>
+                  <label htmlFor="docking-protein-pdb" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
+                    Protein PDB File Content
                   </label>
+                  <textarea
+                    id="docking-protein-pdb"
+                    value={dockingProteinPDB}
+                    onChange={(e) => setDockingProteinPDB(e.target.value)}
+                    placeholder="Paste PDB file content here (from AlphaFold2 prediction result)"
+                    className={`w-full h-40 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-teal-600 text-teal-100 placeholder-teal-300 focus:ring-teal-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
+                    disabled={dockingLoading}
+                  />
+                  <p className={`text-sm mt-2 ${isDarkMode ? 'text-teal-200' : 'text-teal-600'}`}>
+                    Tip: Use the PDB file from AlphaFold2 prediction results. Alternatively, provide a protein sequence below.
+                  </p>
                 </div>
-                {useProteinSequence ? (
-                  <div>
-                    <label htmlFor="docking-protein-sequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
-                      Protein Sequence
-                    </label>
-                    <textarea
-                      id="docking-protein-sequence"
-                      value={dockingProteinSequence}
-                      onChange={(e) => setDockingProteinSequence(e.target.value)}
-                      placeholder="Enter protein sequence"
-                      className={`w-full h-32 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-teal-600 text-teal-100 placeholder-teal-300 focus:ring-teal-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
-                      disabled={dockingLoading}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label htmlFor="docking-protein-pdb" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
-                      Protein PDB File Content
-                    </label>
-                    <textarea
-                      id="docking-protein-pdb"
-                      value={dockingProteinPDB}
-                      onChange={(e) => setDockingProteinPDB(e.target.value)}
-                      placeholder="Paste PDB file content here (from AlphaFold2 prediction result)"
-                      className={`w-full h-40 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-teal-600 text-teal-100 placeholder-teal-300 focus:ring-teal-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
-                      disabled={dockingLoading}
-                    />
-                    <p className={`text-sm mt-2 ${isDarkMode ? 'text-teal-200' : 'text-teal-600'}`}>
-                      Tip: Use the PDB file from AlphaFold2 prediction results
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <label htmlFor="docking-protein-sequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
+                    Protein Sequence (optional)
+                  </label>
+                  <textarea
+                    id="docking-protein-sequence"
+                    value={dockingProteinSequence}
+                    onChange={(e) => setDockingProteinSequence(e.target.value)}
+                    placeholder="Enter protein sequence (used if PDB content is empty)"
+                    className={`w-full h-32 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-teal-600 text-teal-100 placeholder-teal-300 focus:ring-teal-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
+                    disabled={dockingLoading}
+                  />
+                </div>
                 <div className="flex flex-col md:flex-row md:items-center md:gap-6 gap-3">
                   <button
                     onClick={handleDocking}
                     disabled={dockingLoading || !dockingSmiles.trim()}
-                    className="w-full md:w-max bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg"
+                    className={`w-full md:w-max bg-transparent font-semibold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 hover:shadow-none transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg cta ${isDarkMode ? 'text-teal-200' : 'text-teal-800'}`}
                   >
                     {dockingLoading ? (
                       <>
@@ -1160,7 +1211,10 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
                     ) : (
                       <>
                         <FlaskConical className="w-6 h-6" />
-                        Run Docking
+                        <span className="hover-underline-animation">Run Docking</span>
+                        <svg id="arrow-horizontal" xmlns="http://www.w3.org/2000/svg" width={30} height={10} viewBox="0 0 46 16">
+                          <path d="M8,0,6.545,1.455l5.506,5.506H-30V9.039H12.052L6.545,14.545,8,16l8-8Z" transform="translate(30)" />
+                        </svg>
                       </>
                     )}
                   </button>
@@ -1272,229 +1326,7 @@ export default function DashboardPage({ user, onLogout, isDarkMode, toggleTheme 
             </div>
           )}
           
-          {/* Pipeline Tab Content */}
-          {activeTab === 'pipeline' && (
-            <div className={`p-8 rounded-xl mb-8 transition-all duration-300 ${isDarkMode ? 'bg-orange-950/90 border border-orange-600' : 'bg-orange-50/90 border border-orange-200'}`}>
-              <div className="space-y-6">
-                <div className="mb-6">
-                  <h2 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDarkMode ? 'text-orange-100' : 'text-orange-800'}`}>
-                    Complete Pipeline: AlphaFold2 → Docking
-                  </h2>
-                  <p className={`text-sm transition-colors duration-300 ${isDarkMode ? 'text-orange-200' : 'text-orange-700'}`}>
-                    Automatically run AlphaFold2 prediction, extract rank 1 PDB from ZIP, and perform docking in one step.
-                    This process can take 15-20 minutes. Rank 1 PDB is automatically extracted from AlphaFold2 ZIP output.
-                  </p>
-                </div>
-                
-                <div>
-                  <label htmlFor="pipeline-sequence" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-orange-100' : 'text-orange-800'}`}>
-                    Protein Sequence
-                  </label>
-                  <textarea
-                    id="pipeline-sequence"
-                    value={pipelineSequence}
-                    onChange={(e) => setPipelineSequence(e.target.value)}
-                    placeholder="Enter protein sequence for AlphaFold2 prediction..."
-                    className={`w-full h-32 px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none text-base font-mono leading-relaxed transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-orange-600 text-orange-100 placeholder-orange-300 focus:ring-orange-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
-                    disabled={pipelineLoading}
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="pipeline-smiles" className={`block text-xl font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-orange-100' : 'text-orange-800'}`}>
-                    SMILES String (Drug Molecule)
-                  </label>
-                  <input
-                    id="pipeline-smiles"
-                    type="text"
-                    value={pipelineSmiles}
-                    onChange={(e) => setPipelineSmiles(e.target.value)}
-                    placeholder="Enter SMILES string (e.g., C[C@H](N)C(=O)O) or use generated SMILES from above"
-                    className={`w-full px-6 py-4 border-2 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-base font-mono transition-all duration-300 ${isDarkMode ? 'bg-slate-700 border-orange-600 text-orange-100 placeholder-orange-300 focus:ring-orange-400' : 'border-gray-200 text-gray-800 placeholder-gray-600'}`}
-                    disabled={pipelineLoading}
-                  />
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handlePipelineRun}
-                    disabled={pipelineLoading || !pipelineSequence.trim() || !pipelineSmiles.trim()}
-                    className={`px-8 py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg font-semibold ${
-                      pipelineLoading
-                        ? 'bg-gray-400 text-gray-600'
-                        : 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white'
-                    }`}
-                  >
-                    {pipelineLoading ? (
-                      <>
-                        <Loader className="w-6 h-6 animate-spin" />
-                        {pipelineStep || 'Running Pipeline...'}
-                      </>
-                    ) : (
-                      <>
-                        <FlaskConical className="w-6 h-6" />
-                        Run Complete Pipeline
-                      </>
-                    )}
-                  </button>
-                  {pipelineError && (
-                    <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl animate-fadeIn">
-                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                      <p className="text-red-700">{pipelineError}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {pipelineResult && pipelineResult.success && (
-                <div className="space-y-6 animate-fadeIn mt-8">
-                  <div className="flex items-center gap-3 p-5 bg-green-50 border border-green-200 rounded-xl">
-                    <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-green-800 font-semibold text-lg">Pipeline Completed Successfully!</p>
-                      <p className="text-green-600 text-sm">AlphaFold2 prediction and docking completed</p>
-                    </div>
-                    {pipelineResult.device_type && (
-                      <div className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                        pipelineResult.device_type.includes('GPU') ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {pipelineResult.device_type}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* AlphaFold2 Results */}
-                  {pipelineResult.alphafold2 && (
-                    <div className={`rounded-xl p-8 space-y-4 transition-all duration-300 ${isDarkMode ? 'bg-slate-700/50 border border-indigo-600' : 'bg-indigo-50'}`}>
-                      <h3 className={`text-xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-indigo-100' : 'text-indigo-800'}`}>
-                        AlphaFold2 Results (Rank 1 PDB)
-                      </h3>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-sm transition-colors duration-300 ${isDarkMode ? 'text-indigo-200' : 'text-indigo-700'}`}>
-                            pLDDT Score: <span className="font-bold">{pipelineResult.alphafold2.plddt_score}</span>
-                          </p>
-                          <p className={`text-xs transition-colors duration-300 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>
-                            Rank 1 File: {pipelineResult.alphafold2.rank1_file}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            const blob = new Blob([pipelineResult.alphafold2.pdb_content], { type: 'text/plain' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `alphafold2_rank1_${pipelineResult.protein_sequence.substring(0, 10)}.pdb`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                          }}
-                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                          Download Rank 1 PDB
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Docking Results */}
-                  {pipelineResult.docking && (
-                    <div className={`rounded-xl p-8 space-y-6 transition-all duration-300 ${isDarkMode ? 'bg-slate-700/50 border border-teal-600' : 'bg-teal-50'}`}>
-                      <h3 className={`text-xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
-                        Docking Results
-                      </h3>
-                      {pipelineResult.docking.best_affinity !== undefined && (
-                        <div className={`rounded-lg p-6 border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white/5 border-white/10'}`}>
-                          <h4 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
-                            Best Binding Affinity
-                          </h4>
-                          <div className="text-4xl font-bold text-green-300 mb-2">
-                            {pipelineResult.docking.best_affinity.toFixed(2)} kcal/mol
-                          </div>
-                          <p className={`text-sm transition-colors duration-300 ${isDarkMode ? 'text-teal-200' : 'text-teal-700'}`}>
-                            {pipelineResult.docking.best_affinity < -7 ? 'Strong binding' :
-                             pipelineResult.docking.best_affinity < -5 ? 'Moderate binding' :
-                             'Weak binding'}
-                          </p>
-                        </div>
-                      )}
-                      {pipelineResult.docking.affinities && pipelineResult.docking.affinities.length > 0 && (
-                        <div className={`rounded-lg p-4 border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white/5 border-white/10'}`}>
-                          <h4 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
-                            All Pose Affinities
-                          </h4>
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            {pipelineResult.docking.affinities.map((affinity: number, idx: number) => (
-                              <div key={idx} className={`text-center p-3 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-white/5'}`}>
-                                <div className={`text-xs mb-1 transition-colors duration-300 ${isDarkMode ? 'text-teal-200' : 'text-teal-700'}`}>
-                                  Pose {idx + 1}
-                                </div>
-                                <div className="text-xl font-bold text-green-300">{affinity.toFixed(2)}</div>
-                                <div className={`text-xs transition-colors duration-300 ${isDarkMode ? 'text-teal-300' : 'text-teal-600'}`}>
-                                  kcal/mol
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {pipelineResult.docking.pdbqt_content && (
-                        <button
-                          onClick={() => {
-                            const blob = new Blob([pipelineResult.docking.pdbqt_content], { type: 'text/plain' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `docked_poses_${pipelineResult.smiles.substring(0, 10).replace(/[^a-zA-Z0-9]/g, '_')}.pdbqt`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                          }}
-                          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                          Download Docked Poses (PDBQT)
-                        </button>
-                      )}
-                      {(pipelineResult.docking.visualization_data || pipelineResult.docking.visualization_url || pipelineResult.docking.visualization_image) && (
-                        <div className={`rounded-lg p-4 border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white/5 border-white/10'}`}>
-                          <h4 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${isDarkMode ? 'text-teal-100' : 'text-teal-800'}`}>
-                            3D Molecular Visualization
-                          </h4>
-                          {pipelineResult.docking.visualization_data && pipelineResult.docking.visualization_data.protein_pdb && pipelineResult.docking.visualization_data.ligand_pdbqt ? (
-                            <div className="relative" style={{ zIndex: 0 }}>
-                              <Molecule3DViewer
-                                proteinPdb={pipelineResult.docking.visualization_data.protein_pdb}
-                                ligandPdbqt={pipelineResult.docking.visualization_data.ligand_pdbqt}
-                              />
-                            </div>
-                          ) : pipelineResult.docking.visualization_url ? (
-                            <iframe
-                              src={pipelineResult.docking.visualization_url}
-                              className="w-full h-96 rounded-lg border border-white/20"
-                              title="Docking Visualization"
-                            />
-                          ) : pipelineResult.docking.visualization_image ? (
-                            <div className="flex justify-center items-center bg-white rounded-lg p-4">
-                              <img
-                                src={pipelineResult.docking.visualization_image}
-                                alt="Ligand Molecular Structure"
-                                className="max-w-full h-auto rounded-lg shadow-lg"
-                                style={{ maxHeight: '600px' }}
-                              />
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          
         </div>
 
         {/* Footer */}

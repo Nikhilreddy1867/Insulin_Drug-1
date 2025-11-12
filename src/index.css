@@ -2,6 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    @apply font-sans antialiased;
+  }
+
+/* CTA underline + arrow slide effect for action buttons */
+.cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.cta svg#arrow-horizontal {
+  transform: translateX(-8px);
+  transition: transform 0.3s ease;
+  fill: currentColor;
+}
+.cta:hover svg#arrow-horizontal { transform: translateX(0); }
+.cta:active svg#arrow-horizontal { transform: scale(0.96); }
+.hover-underline-animation {
+  position: relative;
+  padding-bottom: 6px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.hover-underline-animation:after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: currentColor; /* underline matches text color */
+  transform-origin: bottom right;
+  transition: transform 0.25s ease-out;
+}
+.cta:hover .hover-underline-animation:after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+/* Clean professional font utility for dashboard */
+.font-clean {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/* Font utilities for different UI regions */
+.font-navbar {
+  font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, "Noto Sans";
+}
+.font-heading {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.font-section {
+  font-family: Roboto, system-ui, -apple-system, Segoe UI, Inter, "Helvetica Neue", Arial, "Noto Sans";
+}
+.font-cta {
+  font-family: "Segoe UI", Inter, system-ui, -apple-system, Roboto, "Helvetica Neue", Arial;
+  letter-spacing: 0.04em;
+}
+}
+ 
 /* Custom animations */
 @keyframes fadeIn {
   from {
@@ -97,6 +162,126 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* App loader (square jump with shadow) themed to homepage */
+.app-loader {
+  width: 48px;
+  height: 48px;
+  margin: auto;
+  position: relative;
+}
+.app-loader:before {
+  content: '';
+  width: 48px;
+  height: 5px;
+  background: rgba(99, 102, 241, 0.35); /* indigo shadow */
+  position: absolute;
+  top: 60px;
+  left: 0;
+  border-radius: 50%;
+  animation: loaderShadow 0.5s linear infinite;
+}
+.app-loader:after {
+  content: '';
+  width: 100%;
+  height: 100%;
+  background: #6366F1; /* indigo-500 */
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 4px;
+  animation: loaderJump 0.5s linear infinite;
+}
+@keyframes loaderJump {
+  15% { border-bottom-right-radius: 3px; }
+  25% { transform: translateY(9px) rotate(22.5deg); }
+  50% { transform: translateY(18px) scale(1, .9) rotate(45deg); border-bottom-right-radius: 40px; }
+  75% { transform: translateY(9px) rotate(67.5deg); }
+  100% { transform: translateY(0) rotate(90deg); }
+}
+@keyframes loaderShadow {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.2, 1); }
+}
+
+/* Bubble hover button (for Dashboard nav buttons) */
+.bubble-btn {
+  position: relative;
+  padding: 10px 22px;
+  border-radius: 12px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  background-color: inherit; /* keep existing bg (e.g., gradient) */
+  transition: all 0.2s ease;
+  overflow: visible;
+  z-index: 0; /* establish stacking context above surrounding backgrounds */
+  isolation: isolate; /* keep pseudo-elements above button background but below siblings */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bubble-btn > * { position: relative; z-index: 2; }
+.bubble-btn:active { transform: scale(0.96); }
+.bubble-btn:before,
+.bubble-btn:after {
+  position: absolute;
+  content: "";
+  width: 260%;
+  left: 50%;
+  height: 220%;
+  transform: translateX(-50%);
+  z-index: 1; /* draw bubbles above button bg, below text */
+  background-repeat: no-repeat;
+  pointer-events: none;
+  will-change: background-position;
+  border-radius: 0;
+  opacity: 0.75;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 8px rgba(125,42,232,0.55));
+}
+.bubble-btn:before { top: -140%; }
+.bubble-btn:after { bottom: -140%; }
+.bubble-btn:hover:before {
+  top: -70%;
+  background-image: radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, transparent 20%, #7d2ae8 20%, transparent 30%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, transparent 10%, #7d2ae8 15%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%);
+  background-size: 12% 12%, 22% 22%, 17% 17%, 22% 22%, 20% 20%, 12% 12%, 17% 17%, 12% 12%, 20% 20%;
+  background-position: 50% 120%;
+  animation: greentopBubbles 2s ease-out;
+  opacity: 1;
+}
+@keyframes greentopBubbles {
+  0% { background-position: 5% 90%, 10% 90%, 10% 90%, 15% 90%, 25% 90%, 25% 90%, 40% 90%, 55% 90%, 70% 90%; }
+  50% { background-position: 0% 80%, 0% 20%, 10% 40%, 20% 0%, 30% 30%, 22% 50%, 50% 50%, 65% 20%, 90% 30%; }
+  100% { background-position: 0% 70%, 0% 10%, 10% 30%, 20% -10%, 30% 20%, 22% 40%, 50% 40%, 65% 10%, 90% 20%; background-size: 5% 5%,5% 5%,5% 5%,5% 5%,5% 5%,5% 5%,5% 5%; }
+}
+.bubble-btn:hover:after {
+  bottom: -70%;
+  background-image: radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, transparent 10%, #7d2ae8 15%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%),
+    radial-gradient(circle, #7d2ae8 20%, transparent 20%);
+  background-size: 17% 17%, 22% 22%, 20% 20%, 22% 22%, 17% 17%, 22% 22%, 20% 20%;
+  background-position: 50% 0%;
+  animation: greenbottomBubbles 2s ease-out;
+  opacity: 1;
+}
+@keyframes greenbottomBubbles {
+  0% { background-position: 10% -10%, 30% 10%, 55% -10%, 70% -10%, 85% -10%, 70% -10%, 70% 0%; }
+  50% { background-position: 0% 80%, 20% 80%, 45% 60%, 60% 100%, 75% 70%, 95% 60%, 105% 0%; }
+  100% { background-position: 0% 90%, 20% 90%, 45% 70%, 60% 110%, 75% 80%, 95% 70%, 110% 10%; background-size: 5% 5%,5% 5%,5% 5%,5% 5%,5% 5%,5% 5%,5% 5%; }
+}
+
 /* Loading animations */
 .loading-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -119,4 +304,354 @@
   50% {
     opacity: 0.5;
   }
+}
+
+/* Shining button hover effect */
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(200%) rotate(45deg);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5), 0 0 10px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Apply to all buttons */
+button:not(:disabled) {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+button:not(:disabled)::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: none;
+}
+
+button:not(:disabled):hover::before {
+  animation: shine 0.6s ease-in-out;
+}
+
+/* Glowing effect for primary buttons */
+.btn-glow:hover {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Smooth page transitions for all elements */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Page transition animations */
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Apply to all pages */
+.page-container {
+  animation: pageSlideIn 0.5s ease-out;
+}
+
+/* Alternative fade animation */
+.page-fade {
+  animation: pageFadeIn 0.4s ease-in-out;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Background glow on hover (for buttons/cards) */
+.hover-bg-glow {
+  transition: box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.hover-bg-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.35),
+    0 10px 30px rgba(99, 102, 241, 0.35),
+    0 0 50px rgba(99, 102, 241, 0.25);
+}
+
+/* Corner line effect on hover */
+.hover-corners {
+  position: relative;
+}
+
+.hover-corners::before,
+.hover-corners::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.hover-corners::before {
+  top: 6px;
+  left: 6px;
+  border-top: 2px solid rgba(99, 102, 241, 0.7);
+  border-left: 2px solid rgba(99, 102, 241, 0.7);
+  transform: translate(-6px, -6px) scale(0.8);
+}
+
+.hover-corners::after {
+  bottom: 6px;
+  right: 6px;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.7);
+  border-right: 2px solid rgba(99, 102, 241, 0.7);
+  transform: translate(6px, 6px) scale(0.8);
+}
+
+.hover-corners:hover::before,
+.hover-corners:hover::after {
+  transform: translate(0, 0) scale(1);
+  opacity: 1;
+}
+
+/* Cursor-tracking spotlight for interactive elements (uses --x/--y from container) */
+.hover-spotlight::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background: radial-gradient(200px circle at var(--x, 50%) var(--y, 50%), rgba(255, 255, 255, 0.15), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  mix-blend-mode: screen;
+}
+
+.hover-spotlight:hover::after {
+  opacity: 1;
+}
+
+/* Outline-fill button (for top-right auth toggle) */
+.btn-outline-fill {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  padding: 15px 30px;
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-decoration: none;
+  color: #725AC1 !important;
+  background: transparent !important;
+  cursor: pointer;
+  transition: ease-out 0.5s;
+  border: 2px solid #725AC1 !important;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 0 #725AC1 !important;
+  filter: none !important;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-outline-fill:hover {
+  color: #ffffff !important;
+  box-shadow: inset 0 -100px 0 0 #725AC1 !important;
+  background: transparent !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.btn-outline-fill:active {
+  transform: scale(0.9);
+}
+
+.btn-outline-fill:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ensure no global shine/spotlight pseudo-elements apply */
+.btn-outline-fill::before,
+.btn-outline-fill::after {
+  content: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  filter: none !important;
+}
+
+/* Disable global shine on specific buttons */
+.no-shine::before {
+  content: none !important;
+}
+
+/* Disable global hover lift/box-shadow on specific buttons */
+.no-lift:hover {
+  transform: none !important;
+}
+
+/* Shine (sheen sweep) effect for buttons */
+.hover-shine {
+  position: relative;
+  overflow: hidden;
+}
+.hover-shine::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -150%;
+  width: 120%;
+  height: 200%;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255,255,255,0), rgba(255,255,255,0.35), rgba(255,255,255,0));
+  transform: skewX(-20deg) translateX(0);
+  transition: transform 0.6s ease;
+}
+.hover-shine:hover::before {
+  transform: skewX(-20deg) translateX(140%);
+}
+
+/* Border glow (emerald-tinted) used for Mobile OTP buttons */
+.hover-border-glow {
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.hover-border-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.45),
+    0 0 20px 4px rgba(16, 185, 129, 0.35);
+  border-color: rgba(16, 185, 129, 0.8) !important;
+}
+
+/* Total background glow with expanding circle (Google button) */
+.btn-total-glow {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  border: none;
+  border-radius: 9999px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.25);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.12);
+  cursor: pointer;
+  transition: background-color 0.45s ease, box-shadow 0.45s ease, transform 0.2s ease;
+  background-color: rgba(33, 150, 243, 0);
+}
+.btn-total-glow > span:first-child {
+  position: relative;
+  z-index: 1;
+}
+.btn-total-glow > span:last-child {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background-color: #2196F3;
+  border-radius: 9999px;
+  opacity: 0;
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.btn-total-glow:hover {
+  box-shadow: 0 0 0 5px rgba(33, 149, 243, 0.38);
+  color: #ffffff;
+  background-color: rgba(33, 150, 243, 0.9);
+}
+.btn-total-glow:active { transform: scale(0.95); }
+.btn-total-glow:hover > span:last-child {
+  width: 1200px;
+  height: 1200px;
+  opacity: 1;
+}
+
+/* Ridge border glow (Mobile OTP buttons) */
+.btn-ridge-glow {
+  position: relative;
+  border: 3px ridge #149CEA;
+  background-color: transparent;
+  color: white;
+  border-radius: 0.375rem; /* ~0.3em */
+  font-weight: 600;
+  transition: 1s;
+  overflow: hidden;
+}
+.btn-ridge-glow::after,
+.btn-ridge-glow::before {
+  content: "";
+  position: absolute;
+  left: 3%;
+  width: 95%;
+  height: 40%;
+  background-color: transparent; /* prevent visible black stripe on dark backgrounds */
+  transition: 0.5s;
+  transform-origin: center;
+}
+.btn-ridge-glow::after { top: -10px; }
+.btn-ridge-glow::before { top: 80%; }
+.btn-ridge-glow:hover::before,
+.btn-ridge-glow:hover::after {
+  transform: scale(0);
+}
+.btn-ridge-glow:hover {
+  box-shadow: inset 0 0 25px #1479EA;
+}
+
+/* Plain icon button: neutralize global button styles, keep absolute positioning */
+.btn-plain-icon {
+  position: absolute !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+.btn-plain-icon:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+.btn-plain-icon::before,
+.btn-plain-icon::after {
+  content: none !important;
 }

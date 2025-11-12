@@ -92,15 +92,15 @@ export default function AlphaFold2Page() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16">
+    <div className="page-container min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 py-16 font-section">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold text-white mb-4">AlphaFold2 Structure Prediction</h1>
-        <p className="text-blue-200 mb-12 text-lg">
+        <h1 className="text-4xl font-heading text-white mb-4">AlphaFold2 Structure Prediction</h1>
+        <p className="text-blue-200 mb-12 text-lg font-section">
           Predict 3D protein structures using AlphaFold2 powered by ColabFold
         </p>
 
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-8 shadow-sm mb-8">
-          <label htmlFor="alphafold-sequence" className="block text-xl font-semibold mb-4 text-white">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-8 shadow-sm mb-8 font-section">
+          <label htmlFor="alphafold-sequence" className="block text-xl font-semibold mb-4 text-white font-heading">
             Protein Sequence
           </label>
           <textarea
@@ -115,7 +115,7 @@ export default function AlphaFold2Page() {
             <button
               onClick={handlePredict}
               disabled={loading || !sequence.trim()}
-              className="px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg"
+              className={`px-8 py-4 bg-transparent ${loading ? 'text-gray-400' : 'text-yellow-300'} font-cta font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-3 transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed text-lg cta`}
             >
               {loading ? (
                 <>
@@ -125,7 +125,10 @@ export default function AlphaFold2Page() {
               ) : (
                 <>
                   <Dna className="w-6 h-6" />
-                  Predict Structure
+                  <span className="hover-underline-animation">Predict Structure</span>
+                  <svg id="arrow-horizontal" xmlns="http://www.w3.org/2000/svg" width={30} height={10} viewBox="0 0 46 16">
+                    <path d="M8,0,6.545,1.455l5.506,5.506H-30V9.039H12.052L6.545,14.545,8,16l8-8Z" transform="translate(30)" />
+                  </svg>
                 </>
               )}
             </button>
@@ -148,13 +151,13 @@ export default function AlphaFold2Page() {
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-8 shadow-sm space-y-6">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-8 shadow-sm space-y-6 font-section">
               <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-bold text-white">Prediction Results</h3>
+                <h3 className="text-2xl font-heading text-white">Prediction Results</h3>
                 {result.result.pdb_content && (
                   <button
                     onClick={downloadPDB}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors font-cta"
                   >
                     <Download className="w-4 h-4" />
                     Download PDB

@@ -648,17 +648,21 @@ def load_models():
     global progen_model, molt5_fusion, fusion_model, fusion_tokenizer
     try:
         logger.info("[Model] Loading models...")
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        models_dir = os.path.join(script_dir, "models")
+        
         # Resolve absolute paths for clear diagnostics
-        le_path = os.path.abspath("models/label_encoder.pkl")
-        pca_path = os.path.abspath("models/pca_model.pkl")
-        mlp_path = os.path.abspath("models/best_mlp_medium_adv.pth")
-        seqgen_path = os.path.abspath("models/Sequence_Generator.pt")
-        prot2smiles_path = os.path.abspath("models/Protein_to_Smile.pt")
-        molt5_path = os.path.abspath("models/molt5_best.pt")
+        le_path = os.path.join(models_dir, "label_encoder.pkl")
+        pca_path = os.path.join(models_dir, "pca_model.pkl")
+        mlp_path = os.path.join(models_dir, "best_mlp_medium_adv.pth")
+        seqgen_path = os.path.join(models_dir, "Sequence_Generator.pt")
+        prot2smiles_path = os.path.join(models_dir, "Protein_to_Smile.pt")
+        molt5_path = os.path.join(models_dir, "molt5_best.pt")
         # Try protein_classifier.pt first, fallback to custom_protein_lm.pt, then final_ckpt.pt
-        protein_classifier_path = os.path.abspath("models/protein_classifier.pt")
-        custom_lm_ckpt_path = os.path.abspath("models/custom_protein_lm.pt")
-        final_ckpt_path = os.path.abspath("models/final_ckpt.pt")
+        protein_classifier_path = os.path.join(models_dir, "protein_classifier.pt")
+        custom_lm_ckpt_path = os.path.join(models_dir, "custom_protein_lm.pt")
+        final_ckpt_path = os.path.join(models_dir, "final_ckpt.pt")
         
         # ProteinLM - CRITICAL: Must load trained checkpoint for correct embeddings!
         custom_protein_lm = ProteinLM()
@@ -747,8 +751,8 @@ def load_models():
         mlp_model = MLP(input_dim=pca_dim, num_classes=num_classes).to(device)
         
         # Try custom_adv first (from notebook), fallback to medium_adv
-        mlp_custom_path = os.path.abspath("models/best_mlp_custom_adv.pth")
-        mlp_medium_path = os.path.abspath("models/best_mlp_medium_adv.pth")
+        mlp_custom_path = os.path.join(models_dir, "best_mlp_custom_adv.pth")
+        mlp_medium_path = os.path.join(models_dir, "best_mlp_medium_adv.pth")
         
         if os.path.exists(mlp_custom_path):
             logger.info(f"[Model] Loading MLP weights: {mlp_custom_path} (exists={os.path.exists(mlp_custom_path)})")
@@ -2028,184 +2032,8 @@ def docking_run():
             }), 500
             
     except Exception as e:
-        logger.error(f"[Docking] Error: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': f'Docking failed: {str(e)}'}), 500
-
-@app.route('/pipeline/alphafold2-to-docking', methods=['POST'])
-def combined_pipeline():
-    """
-    Complete pipeline: Protein Sequence → AlphaFold2 → Rank 1 PDB → Docking
-    
-    Request: {"protein_sequence": "...", "smiles": "..."}
-    Response: Combined AlphaFold2 + Docking results
-    """
-    try:
-        data = request.get_json() or {}
-        protein_sequence = data.get('protein_sequence', '').strip().upper()
-        smiles = data.get('smiles', '').strip()
-        
-        # Validation
-        if not protein_sequence:
-            return jsonify({'success': False, 'error': 'Protein sequence is required'}), 400
-        
-        if not smiles:
-            return jsonify({'success': False, 'error': 'SMILES string is required'}), 400
-        
-        valid_amino_acids = set("ACDEFGHIKLMNPQRSTVWY")
-        if not all(c in valid_amino_acids for c in protein_sequence):
-            return jsonify({'success': False, 'error': 'Invalid amino acid sequence'}), 400
-        
-        if len(protein_sequence) < 10:
-            return jsonify({'success': False, 'error': 'Sequence too short (minimum 10 amino acids)'}), 400
-        
-        logger.info(f"[Pipeline] Starting combined pipeline:")
-        logger.info(f"  - Protein sequence length: {len(protein_sequence)}")
-        logger.info(f"  - SMILES: {smiles[:50]}...")
-        
-        # Step 1: Run AlphaFold2 prediction
-        logger.info("[Pipeline] Step 1/2: Running AlphaFold2 prediction...")
-        alphafold2_result = None
-        try:
-            health_status = check_ngrok_health(ALPHAFOLD2_NGROK_URL)
-            if health_status['status'] != 'online':
-                return jsonify({
-                    'success': False,
-                    'error': 'AlphaFold2 service is offline. Please ensure the Colab notebook is running.',
-                    'step': 'alphafold2_health_check'
-                }), 503
-            
-            ngrok_endpoint = f"{ALPHAFOLD2_NGROK_URL.rstrip('/')}/predict"
-            headers = {
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true',
-                'User-Agent': 'Mozilla/5.0 (compatible; Flask-Backend/1.0)'
-            }
-            
-            response = requests.post(
-                ngrok_endpoint,
-                json={'sequence': protein_sequence},
-                timeout=900,  # 15 minutes for AlphaFold2
-                headers=headers,
-                allow_redirects=True,
-                verify=True
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                if 'error' in result:
-                    return jsonify({
-                        'success': False,
-                        'error': f'AlphaFold2 error: {result["error"]}',
-                        'step': 'alphafold2_prediction'
-                    }), 500
-                
-                alphafold2_result = result
-                logger.info(f"[Pipeline] ✅ AlphaFold2 completed! pLDDT: {result.get('plddt_score', 'N/A')}")
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'AlphaFold2 service error: HTTP {response.status_code}',
-                    'step': 'alphafold2_prediction'
-                }), 500
-                
-        except requests.exceptions.RequestException as e:
-            logger.error(f"[Pipeline] AlphaFold2 connection error: {e}")
-            return jsonify({
-                'success': False,
-                'error': f'Cannot connect to AlphaFold2 service: {str(e)}',
-                'step': 'alphafold2_connection'
-            }), 503
-        
-        # Step 2: Extract rank 1 PDB (should already be extracted by AlphaFold2 service)
-        pdb_content = alphafold2_result.get('pdb_content', '')
-        if not pdb_content:
-            return jsonify({
-                'success': False,
-                'error': 'No PDB content received from AlphaFold2',
-                'step': 'pdb_extraction',
-                'alphafold2': alphafold2_result
-            }), 500
-        
-        logger.info(f"[Pipeline] ✅ Rank 1 PDB extracted ({len(pdb_content)} characters)")
-        
-        # Step 3: Run Docking with rank 1 PDB (locally)
-        logger.info("[Pipeline] Step 2/2: Running molecular docking locally...")
-        docking_result = None
-        try:
-            from local_docking import run_local_docking
-            docking_result = run_local_docking(smiles, pdb_content)
-            logger.info(f"[Pipeline] ✅ Local docking completed! Best affinity: {docking_result.get('best_affinity', 'N/A')} kcal/mol")
-        except ImportError as e:
-            error_msg = str(e)
-            logger.error(f"[Pipeline] Docking dependencies missing: {error_msg}")
-            return jsonify({
-                'success': False,
-                'error': f'Docking dependencies not installed: {error_msg}. Install with: pip install rdkit-pypi vina',
-                'step': 'docking_dependencies',
-                'alphafold2': alphafold2_result
-            }), 500
-        except Exception as e:
-            logger.error(f"[Pipeline] Docking error: {e}", exc_info=True)
-            # Fallback to Colab if available
-            if DOCKING_NGROK_URL and 'localhost' not in DOCKING_NGROK_URL:
-                logger.info("[Pipeline] Falling back to Colab docking...")
-                try:
-                    health_status = check_ngrok_health(DOCKING_NGROK_URL)
-                    if health_status['status'] == 'online':
-                        ngrok_endpoint = f"{DOCKING_NGROK_URL.rstrip('/')}/dock"
-                        response = requests.post(
-                            ngrok_endpoint,
-                            json={'smiles': smiles, 'protein_pdb': pdb_content},
-                            timeout=180,
-                            headers={'Content-Type': 'application/json'}
-                        )
-                        if response.status_code == 200:
-                            docking_result = response.json()
-                            logger.info(f"[Pipeline] ✅ Colab docking completed (fallback)")
-                        else:
-                            raise Exception(f"Colab docking failed: {response.status_code}")
-                    else:
-                        raise Exception("Colab docking service offline")
-                except Exception as fallback_error:
-                    logger.error(f"[Pipeline] Colab fallback also failed: {fallback_error}")
-            
-            return jsonify({
-                'success': False,
-                'error': f'Docking failed: {str(e)}',
-                'step': 'docking_prediction',
-                'alphafold2': alphafold2_result
-            }), 500
-        
-        # Step 4: Return combined results
-        logger.info("[Pipeline] ✅ Pipeline completed successfully!")
-        return jsonify({
-            'success': True,
-            'protein_sequence': protein_sequence,
-            'smiles': smiles,
-            'alphafold2': {
-                'pdb_content': alphafold2_result.get('pdb_content', ''),
-                'plddt_score': alphafold2_result.get('plddt_score', 0),
-                'jobname': alphafold2_result.get('jobname', ''),
-                'rank1_file': alphafold2_result.get('rank1_file', 'unknown')
-            },
-            'docking': {
-                **docking_result,
-                'visualization_data': {
-                    'protein_pdb': pdb_content,  # Include protein PDB for 3D visualization
-                    'ligand_pdbqt': docking_result.get('pdbqt_content', '')
-                }
-            },
-            'pipeline_status': 'complete',
-            'device_type': device_type,
-            'device': str(device)
-        })
-        
-    except Exception as e:
-        logger.error(f"[Pipeline] Error: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': f'Pipeline failed: {str(e)}'
-        }), 500
+      logger.error(f"[Docking] Error: {e}", exc_info=True)
+      return jsonify({'success': False, 'error': f'Docking failed: {str(e)}'}), 500
 
 @app.route('/generate-smiles', methods=['POST'])
 def generate_smiles_endpoint():
@@ -2258,7 +2086,8 @@ def generate_smiles_endpoint():
                 'isValid': result.get('isValid'),
                 'model_type': 'fusion',
                 'deviceType': result.get('deviceType'),
-                'sampling': result.get('sampling', {})
+                'sampling': result.get('sampling', {}),
+                'drug_name': result.get('drug_name')
             })
             
         except requests.exceptions.ConnectionError:
