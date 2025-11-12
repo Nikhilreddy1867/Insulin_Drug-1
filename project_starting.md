@@ -44,7 +44,7 @@ Notes:
 
 ## 4) Model files (not in repo)
 
-Place required model checkpoints locally (do not commit):
+Place required models folder in backend (do not commit):
 - Backend models directory: `./backend/models/`
 - Expected examples (filenames may differ in your setup):
   - `protein_classifier.pt`
